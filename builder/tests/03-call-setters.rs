@@ -23,7 +23,11 @@ pub struct Command {
 fn main() {
     let mut builder = Command::builder();
     builder.executable("cargo".to_owned());
+    assert_eq!(builder.executable, Some("cargo".to_owned()));
     builder.args(vec!["build".to_owned(), "--release".to_owned()]);
+    assert_eq!(builder.args, Some(vec!["build".to_owned(), "--release".to_owned()]));
     builder.env(vec![]);
+    assert_eq!(builder.env, Some(vec![]));
     builder.current_dir("..".to_owned());
+    assert_eq!(builder.current_dir, Some("..".to_owned()));
 }

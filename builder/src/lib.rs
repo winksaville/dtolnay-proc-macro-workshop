@@ -5,8 +5,8 @@ use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
-    let derive_input = parse_macro_input!(input as DeriveInput);
-    dbg!(&derive_input);
+    let _derive_input = parse_macro_input!(input as DeriveInput);
+    //dbg!(&derive_input);
 
     // Create builder identifier for use in `impl Command`
     let builder_ident = Ident::new("builder", Span::call_site());
@@ -30,6 +30,25 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     env: None,
                     current_dir: None,
                 }
+            }
+        }
+
+        impl CommandBuilder {
+            fn executable(&mut self, executable: String) -> &mut Self {
+                self.executable = Some(executable);
+                self
+            }
+            fn args(&mut self, args: Vec<String>) -> &mut Self {
+                self.args = Some(args);
+                self
+            }
+            fn env(&mut self, env: Vec<String>) -> &mut Self {
+                self.env = Some(env);
+                self
+            }
+            fn current_dir(&mut self, dir: String) -> &mut Self {
+                self.current_dir = Some(dir);
+                self
             }
         }
     };
