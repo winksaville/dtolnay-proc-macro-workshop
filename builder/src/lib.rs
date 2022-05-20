@@ -1,27 +1,23 @@
 use proc_macro::TokenStream;
 
-use components::parse;
+use components::{analyze, parse};
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::Fields;
 
 // This is going to be patterned after the ferrous-systems
 // testing-proc-macros blog post:
 //   https://ferrous-systems.com/blog/testing-proc-macros/
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
-    let item_struct = parse(input.into());
+    let ast = parse(input.into());
 
-    let named_fields = match item_struct.fields {
-        Fields::Named(fields) => fields.named,
-        _ => panic!("this derive macro only works on structs with named fields"),
-    };
+    let struct_model = analyze(ast);
 
-    let struct_ident = item_struct.ident;
+    let struct_ident = &struct_model.struct_ident;
     let builder_name = format!("{}Builder", struct_ident);
     let builder_ident = Ident::new(&builder_name, Span::call_site());
 
-    let optional_named_fields = named_fields.iter().map(|field| {
+    let optional_named_fields = struct_model.named_fields.iter().map(|field| {
         let ident = field.ident.clone();
         let ty = field.ty.clone();
         quote! {
@@ -29,7 +25,7 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     });
 
-    let optional_named_fields_default = named_fields.iter().map(|field| {
+    let optional_named_fields_default = struct_model.named_fields.iter().map(|field| {
         let ident = field.ident.clone();
         quote! {
             #ident: None,
