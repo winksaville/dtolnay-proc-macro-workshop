@@ -19,3 +19,4 @@ quote = "1.0.18"
 seq = { path = "seq" }
 sorted = { path = "sorted" }
 syn = { version = "1.0.95", features = ["extra-traits", "full"] }
+components = { path = "components" }
