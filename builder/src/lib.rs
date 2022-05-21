@@ -32,6 +32,17 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     });
 
+    let add_setters= struct_model.named_fields.iter().map(|field| {
+        let ident = field.ident.clone();
+        let ty = field.ty.clone();
+        quote! {
+            fn #ident(&mut self, #ident: #ty) -> &mut Self {
+                self.#ident = Some(#ident);
+                self
+            }
+        }
+    });
+
     let rust_ts = quote! {
         #[derive(Debug)] // TODO: Make derive(Debug) conditional on a "feature"?
         pub struct #builder_ident {
@@ -44,6 +55,10 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     #(#optional_named_fields_default)*
                 }
             }
+        }
+
+        impl #builder_ident {
+            #(#add_setters)*
         }
     };
     //dbg!(&rust_ts);
