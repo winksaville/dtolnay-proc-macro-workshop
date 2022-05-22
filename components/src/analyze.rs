@@ -1,28 +1,32 @@
 use crate::parse::Ast;
-use proc_macro2::Ident;
+use proc_macro2::{Ident, Span};
 use syn::{punctuated::Punctuated, token::Comma, Field, Fields};
 
-#[allow(unused)]
+#[derive(Clone, Debug)]
 pub struct StructModel {
-    pub struct_ident: Ident,
-    pub named_fields: Punctuated<Field, Comma>,
     pub ast: Ast,
+    pub struct_ident: Ident,
+    pub builder_ident: Ident,
+    pub named_fields: Punctuated<Field, Comma>,
 }
 
 // A testable function that analyzes the Ast and
 // returns a StructModel.
 pub fn analyze(ast: Ast) -> StructModel {
     let struct_ident = ast.ident.clone();
+    let builder_name = format!("{}Builder", struct_ident);
+    let builder_ident = Ident::new(&builder_name, Span::call_site());
 
     let named_fields = match &ast.fields {
         Fields::Named(fields) => fields.named.clone(),
-        _ => panic!("this derive macro only works on structs with named fields"),
+        _ => unreachable!(), // Can't happen, already validated in parse.
     };
 
     StructModel {
-        struct_ident,
-        named_fields,
         ast,
+        struct_ident,
+        builder_ident,
+        named_fields,
     }
 }
 

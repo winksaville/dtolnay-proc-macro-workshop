@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use syn::ItemStruct;
+use syn::{ItemStruct, Fields};
 
 pub type Ast = ItemStruct;
 
@@ -13,9 +13,16 @@ pub fn parse(input: TokenStream) -> Ast {
     let parsed_items = syn::parse2::<ItemStruct>(input);
     //dbg!(&parsed_items);
     let item_struct = match parsed_items {
-        Ok(is) => is,
+        Ok(item_struct) => {
+            match &item_struct.fields {
+                Fields::Named(_) => (),
+                _ => panic!("this derive macro only works on structs with named fields"),
+            };
+
+            item_struct
+        }
         Err(e) => {
-            // How to show location/span
+            // How to show location/span?
             panic!("item is not a struct, e={}", e);
         }
     };
