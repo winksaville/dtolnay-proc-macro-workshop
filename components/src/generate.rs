@@ -35,12 +35,14 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
 
     let add_assignments = struct_model.named_fields.iter().map(|field| {
         let ident = field.ident.clone();
-        let ident_string = ident.clone().unwrap().to_string();
+        let error_string = format!("{} field: `{}` not set",
+            struct_ident.to_string(), ident.clone().unwrap().to_string());
+        //eprintln!("{}", error_string);
         quote! {
             let #ident = if let Some(v) = self.#ident.take() {
                 v
             } else {
-                return Err(format!("{} not set", #ident_string).into());
+                return Err(#error_string.into());
             };
         }
     });
