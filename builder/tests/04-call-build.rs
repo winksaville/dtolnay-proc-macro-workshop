@@ -30,4 +30,7 @@ fn main() {
 
     let command = builder.build().unwrap();
     assert_eq!(command.executable, "cargo");
+    assert_eq!(command.args, vec!["build".to_owned(), "--release".to_owned()]);
+    assert_eq!(command.env, Vec::<String>::new());
+    assert_eq!(command.current_dir, "..");
 }
