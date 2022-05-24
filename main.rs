@@ -19,7 +19,8 @@ pub struct Command {
     executable: String,
     args: Vec<String>,
     env: Vec<String>,
-    current_dir: String,
+    current_dir: Option<String>,
+    //current_dir: String,
 }
 //
 //// This is what "my-solutions" ended up atk
@@ -118,8 +119,28 @@ pub struct Command {
 //}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let builder = Command::builder();
+    let mut builder = Command::builder();
     eprintln!("builder={:#?}", builder);
 
+    let expected_executable = "cargo".to_owned();
+    let expected_args = vec!["build".to_owned(), "--release".to_owned()];
+    let expected_env = Vec::<String>::new();
+    let expected_current_dir = "..".to_owned();
+
+    builder.executable(expected_executable.clone());
+    assert_eq!(builder.executable, Some(expected_executable.clone()));
+    builder.args(expected_args.clone());
+    assert_eq!(builder.args, Some(expected_args.clone()));
+    builder.env(expected_env.clone());
+    assert_eq!(builder.env, Some(expected_env.clone()));
+    builder.current_dir(expected_current_dir.clone());
+    assert_eq!(builder.current_dir, Some(expected_current_dir.clone()));
+
+    let cmd = builder.build()?;
+    eprintln!("cmd={:#?}", cmd);
+    assert_eq!(cmd.executable, expected_executable);
+    assert_eq!(cmd.args, expected_args);
+    assert_eq!(cmd.env, expected_env);
+    assert_eq!(cmd.current_dir, Some(expected_current_dir));
     Ok(())
 }

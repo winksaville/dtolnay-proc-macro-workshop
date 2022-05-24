@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use syn::{ItemStruct, Fields};
+use syn::{Fields, ItemStruct};
 
 pub type Ast = ItemStruct;
 
