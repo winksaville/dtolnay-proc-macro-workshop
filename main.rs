@@ -16,10 +16,11 @@ use derive_builder::Builder;
 #[allow(unused)]
 #[derive(Builder, Debug)]
 pub struct Command {
-    executable: String,
+    //executable: String,
+    #[builder(each = "arg")]
     args: Vec<String>,
-    env: Vec<String>,
-    current_dir: Option<String>,
+    //env: Vec<String>,
+    //current_dir: Option<String>,
     //current_dir: String,
 }
 //
@@ -122,25 +123,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut builder = Command::builder();
     eprintln!("builder={:#?}", builder);
 
-    let expected_executable = "cargo".to_owned();
-    let expected_args = vec!["build".to_owned(), "--release".to_owned()];
-    let expected_env = Vec::<String>::new();
-    let expected_current_dir = "..".to_owned();
+    //let expected_executable = "cargo".to_owned();
+    let arg1 = "build".to_owned();
+    let arg2 = "--release".to_owned();
+    let expected_args = vec![arg1.clone(), arg2.clone()];
+    //let expected_env = Vec::<String>::new();
+    //let expected_current_dir = "..".to_owned();
 
-    builder.executable(expected_executable.clone());
-    assert_eq!(builder.executable, Some(expected_executable.clone()));
-    builder.args(expected_args.clone());
+    //builder.executable(expected_executable.clone());
+    //assert_eq!(builder.executable, Some(expected_executable.clone()));
+    builder.arg(arg1.clone());
+    builder.arg(arg2.clone());
     assert_eq!(builder.args, Some(expected_args.clone()));
-    builder.env(expected_env.clone());
-    assert_eq!(builder.env, Some(expected_env.clone()));
-    builder.current_dir(expected_current_dir.clone());
-    assert_eq!(builder.current_dir, Some(expected_current_dir.clone()));
+    //builder.env(expected_env.clone());
+    //assert_eq!(builder.env, Some(expected_env.clone()));
+    //builder.current_dir(expected_current_dir.clone());
+    //assert_eq!(builder.current_dir, Some(expected_current_dir.clone()));
 
     let cmd = builder.build()?;
     eprintln!("cmd={:#?}", cmd);
-    assert_eq!(cmd.executable, expected_executable);
+    //assert_eq!(cmd.executable, expected_executable);
     assert_eq!(cmd.args, expected_args);
-    assert_eq!(cmd.env, expected_env);
-    assert_eq!(cmd.current_dir, Some(expected_current_dir));
+    //assert_eq!(cmd.env, expected_env);
+    //assert_eq!(cmd.current_dir, expected_current_dir);
+    //assert_eq!(cmd.current_dir, Some(expected_current_dir));
+
     Ok(())
 }

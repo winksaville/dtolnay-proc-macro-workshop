@@ -13,12 +13,16 @@ pub struct StructModel {
 // A testable function that analyzes the Ast and
 // returns a StructModel.
 pub fn analyze(ast: Ast) -> StructModel {
+    //eprintln!("analyze: ast={:#?}", ast);
     let struct_ident = ast.ident.clone();
     let builder_name = format!("{}Builder", struct_ident);
     let builder_ident = Ident::new(&builder_name, Span::call_site());
 
     let named_fields = match &ast.fields {
-        Fields::Named(fields) => fields.named.clone(),
+        Fields::Named(fields) => {
+            //eprintln!("analyze: fields.named={:#?}", &fields.named);
+            fields.named.clone()
+        }
         _ => unreachable!(), // Can't happen, already validated in parse.
     };
 

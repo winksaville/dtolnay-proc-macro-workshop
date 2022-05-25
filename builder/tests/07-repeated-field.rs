@@ -44,11 +44,14 @@ pub struct Command {
 fn main() {
     let command = Command::builder()
         .executable("cargo".to_owned())
+        .args(vec!["debug".to_owned(), "x86".to_owned()])
         .arg("build".to_owned())
         .arg("--release".to_owned())
+        .env("env1".to_owned())
         .build()
         .unwrap();
 
     assert_eq!(command.executable, "cargo");
-    assert_eq!(command.args, vec!["build", "--release"]);
+    assert_eq!(command.args, vec!["debug", "x86", "build", "--release"]);
+    assert_eq!(command.env, vec!["env1"]);
 }

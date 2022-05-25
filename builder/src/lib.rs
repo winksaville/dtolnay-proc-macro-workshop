@@ -4,7 +4,11 @@ use proc_macro::TokenStream;
 // This is going to be patterned after the ferrous-systems
 // testing-proc-macros blog post:
 //   https://ferrous-systems.com/blog/testing-proc-macros/
-#[proc_macro_derive(Builder)]
+//
+// Adding ", attributes(builder)" allows $[builder(xxx = "yyy")]
+// attributes on a field. See 07-prepeated-field.rs as
+// an example.
+#[proc_macro_derive(Builder, attributes(builder))]
 pub fn derive(input: TokenStream) -> TokenStream {
     let ast = parse(input.into());
 

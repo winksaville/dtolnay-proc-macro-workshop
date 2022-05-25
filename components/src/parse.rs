@@ -11,7 +11,7 @@ pub type Ast = ItemStruct;
 // panics without identifying where the problem is.
 pub fn parse(input: TokenStream) -> Ast {
     let parsed_items = syn::parse2::<ItemStruct>(input);
-    //dbg!(&parsed_items);
+    //eprintln!("parse: parsed_items={:#?}", &parsed_items);
     let item_struct = match parsed_items {
         Ok(item_struct) => {
             match &item_struct.fields {
