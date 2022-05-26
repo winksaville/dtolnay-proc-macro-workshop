@@ -1,8 +1,8 @@
 use crate::analyze::StructModel;
-use proc_macro2::{TokenStream, Group, Ident, Literal};
-use quote::quote;
-use syn::{PathArguments, PathSegment, AngleBracketedGenericArguments};
+use proc_macro2::{Group, Ident, Literal, TokenStream};
 use proc_macro_error::{abort, abort_call_site};
+use quote::quote;
+use syn::{AngleBracketedGenericArguments, PathArguments, PathSegment};
 
 fn is_optional_field(field: &syn::Field) -> bool {
     let res = match &field.ty {
@@ -78,9 +78,7 @@ fn extract_inner_type_of_optional_field(field: &syn::Field) -> Option<&PathSegme
                 if first_segment.ident.to_string().as_str() == "Option" {
                     //eprintln!("extract_inner_type_of_optional_field(): first_segment.ident is \"Option\"");
                     match &first_segment.arguments {
-                        PathArguments::AngleBracketed(abga) => {
-                            extract_inner_type(abga)
-                        }
+                        PathArguments::AngleBracketed(abga) => extract_inner_type(abga),
                         _ => None,
                     }
                 } else {
@@ -105,9 +103,7 @@ fn extract_inner_type_of_vector_field(field: &syn::Field) -> Option<&PathSegment
                 if first_segment.ident.to_string().as_str() == "Vec" {
                     //eprintln!("extract_inner_type_of_vector_field(): first_segment.ident is \"Vec\"");
                     match &first_segment.arguments {
-                        PathArguments::AngleBracketed(abga) => {
-                            extract_inner_type(abga)
-                        }
+                        PathArguments::AngleBracketed(abga) => extract_inner_type(abga),
                         _ => None,
                     }
                 } else {
@@ -144,7 +140,12 @@ fn literal_from_builder_each_attribute(field: &syn::Field) -> Option<Literal> {
                                 }
                                 proc_macro2::TokenTree::Punct(p) => {
                                     if p.as_char() != '=' {
-                                        abort!(p, "Expecting '=' after {} = found '{}' ", ident.unwrap().to_string(), p.as_char());
+                                        abort!(
+                                            p,
+                                            "Expecting '=' after {} = found '{}' ",
+                                            ident.unwrap().to_string(),
+                                            p.as_char()
+                                        );
                                     }
                                 }
                                 proc_macro2::TokenTree::Literal(l) => {
@@ -165,7 +166,10 @@ fn literal_from_builder_each_attribute(field: &syn::Field) -> Option<Literal> {
             }
         }
         _ => {
-            abort_call_site!("Only one attribute(builder, each = \"xxx\") there are {}", field.attrs.len());
+            abort_call_site!(
+                "Only one attribute(builder, each = \"xxx\") there are {}",
+                field.attrs.len()
+            );
         }
     }
 }
@@ -184,7 +188,7 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
             }
         } else {
             quote! {
-                #ident: Option<#ty>,
+                #ident: std::option::Option<#ty>,
             }
         }
     });
@@ -192,7 +196,7 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
     let optional_named_fields_default = struct_model.named_fields.iter().map(|field| {
         let ident = field.ident.clone();
         quote! {
-            #ident: None,
+            #ident: std::option::Option::None,
         }
     });
 
@@ -204,7 +208,7 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
             //eprintln!( "add_setters: optional_field ident={:?} inner_type={:?}", ident, inner_type);
             quote! {
                 fn #ident(&mut self, #ident: #inner_type) -> &mut Self {
-                    self.#ident = Some(#ident);
+                    self.#ident = std::option::Option::Some(#ident);
                     self
                 }
             }
@@ -212,7 +216,7 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
             let all_at_a_time = quote! {
                 // Generate the "all-at-a-time" method
                 fn #ident(&mut self, #ident: #ty) -> &mut Self {
-                    self.#ident = Some(#ident);
+                    self.#ident = std::option::Option::Some(#ident);
                     self
                 }
             };
@@ -223,9 +227,8 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
                 let each_span = each_name.span();
                 let each_name_string: String = each_name.to_string();
                 //eprintln!("add_setters: each_name_string.len={} each_name_string={}", each_name_string.len(), each_name_string);
-                let each_name_no_quotes: String = each_name_string.chars().filter(|ch| {
-                    *ch != '"'
-                }).collect();
+                let each_name_no_quotes: String =
+                    each_name_string.chars().filter(|ch| *ch != '"').collect();
                 //eprintln!("add_setters: each_name_no_quotes.len={} each_name_no_quotes={}", each_name_no_quotes.len(), each_name_no_quotes);
                 let each_ident = Some(Ident::new(each_name_no_quotes.as_str(), each_span));
                 //eprintln!("add_setters: each_ident={}", each_ident);
@@ -237,9 +240,9 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
                         if let Some(temp_v) = &mut self.#ident {
                             temp_v.push(param);
                         } else {
-                            let mut new_v = Vec::<String>::new();
+                            let mut new_v = std::vec::Vec::<String>::new();
                             new_v.push(param);
-                            self.#ident = Some(new_v);
+                            self.#ident = std::option::Option::Some(new_v);
                         }
                         self
                     }
@@ -263,7 +266,6 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
                     #all_at_a_time
                 }
             }
-
         } else {
             //eprintln!( "add_setters: NON-optional_field ident={:?} ty={:#?}", ident, ty);
             quote! {
@@ -339,7 +341,7 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
         impl #builder_ident {
             #(#add_setters)*
 
-            fn build(&mut self) -> Result<#struct_ident, Box<dyn std::error::Error>> {
+            fn build(&mut self) -> std::result::Result<#struct_ident, std::boxed::Box<dyn std::error::Error>> {
                 #(#add_assignments)*
 
                 Ok(#struct_ident {

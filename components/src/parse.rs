@@ -18,7 +18,10 @@ pub fn parse(input: TokenStream) -> Result<Ast> {
             match &item_struct.fields {
                 Fields::Named(_) => (),
                 _ => {
-                    let err = syn::Error::new(item_struct.ident.span(), "this derive macro only works on `struct`s with named fields");
+                    let err = syn::Error::new(
+                        item_struct.ident.span(),
+                        "this derive macro only works on `struct`s with named fields",
+                    );
                     return Err(err);
                 }
             };
@@ -86,7 +89,9 @@ mod tests {
         assert!(&res.is_err());
         match &res {
             Err(e) => {
-                assert!(e.to_string().contains("only works on `struct`s with named fields"));
+                assert!(e
+                    .to_string()
+                    .contains("only works on `struct`s with named fields"));
             }
             _ => panic!("Should have returned an Err"),
         }
