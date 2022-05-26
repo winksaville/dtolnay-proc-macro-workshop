@@ -1,5 +1,6 @@
 use components::{analyze, generate, parse};
 use proc_macro::TokenStream;
+use proc_macro_error::proc_macro_error;
 
 // This is going to be patterned after the ferrous-systems
 // testing-proc-macros blog post:
@@ -9,8 +10,13 @@ use proc_macro::TokenStream;
 // attributes on a field. See 07-prepeated-field.rs as
 // an example.
 #[proc_macro_derive(Builder, attributes(builder))]
+#[proc_macro_error]
 pub fn derive(input: TokenStream) -> TokenStream {
-    let ast = parse(input.into());
+    let res = parse(input.into());
+    let ast = match res {
+        Ok(item_struct) => item_struct,
+        Err(e) => return e.into_compile_error().into(),
+    };
 
     let struct_model = analyze(ast);
 

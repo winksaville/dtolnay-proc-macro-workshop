@@ -2,149 +2,129 @@ use crate::analyze::StructModel;
 use proc_macro2::{TokenStream, Group, Ident, Literal};
 use quote::quote;
 use syn::{PathArguments, PathSegment, AngleBracketedGenericArguments};
+use proc_macro_error::{abort, abort_call_site};
 
-// A testable function that generates a TokenStream
-pub fn generate(struct_model: &StructModel) -> TokenStream {
-    let struct_ident = &struct_model.struct_ident;
-    let builder_ident = &struct_model.builder_ident;
-
-    fn is_optional_field(field: &syn::Field) -> bool {
-        let res = match &field.ty {
-            syn::Type::Path(ty_path) => {
-                let path_segments = &ty_path.path.segments;
-                //for (i, seg) in path_segments.iter().enumerate()  {
-                //    eprintln!("{} optional_field(): seg={:?}", i, seg);
-                //}
-                if let Some(first_segment) = path_segments.first() {
-                    if first_segment.ident.to_string().as_str() == "Option" {
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        };
-        //eprintln!("is_optional_field(): res={} ident={:?}", res, &field.ident);
-        res
-    }
-
-    fn is_repeated_field(field: &syn::Field) -> bool {
-        //eprintln!("is_repeated_field(): ident={:?}", &field.ident);
-        let res = match &field.ty {
-            syn::Type::Path(ty_path) => {
-                let path_segments = &ty_path.path.segments;
-                //for (i, seg) in path_segments.iter().enumerate()  {
-                //    eprintln!("{} repeated_field(): seg={:?}", i, seg);
-                //}
-                if let Some(first_segment) = path_segments.first() {
-                    if first_segment.ident.to_string().as_str() == "Vec" {
-                        //eprintln!("is_repeated_field(): true, was \"Vec\"");
-                        true
-                    } else {
-                        //eprintln!("is_repeated_field(): false, not \"Vec\"");
-                        false
-                    }
-                } else {
-                    //eprintln!("is_repeated_field(): false, not path_segments");
-                    false
-                }
-            }
-            _ => {
-                //eprintln!("is_repeated_field(): false, expected ty=syn::Type::Path found ty={:?}", &field.ty);
+fn is_optional_field(field: &syn::Field) -> bool {
+    let res = match &field.ty {
+        syn::Type::Path(ty_path) => {
+            let path_segments = &ty_path.path.segments;
+            //for (i, seg) in path_segments.iter().enumerate()  {
+            //    eprintln!("{} optional_field(): seg={:?}", i, seg);
+            //}
+            if let Some(first_segment) = path_segments.first() {
+                first_segment.ident.to_string().as_str() == "Option"
+            } else {
                 false
             }
-        };
-        //eprintln!("is_repeated_field(): res={} ident={:?}", res, &field.ident);
-        res
-    }
+        }
+        _ => false,
+    };
+    //eprintln!("is_optional_field(): res={} ident={:?}", res, &field.ident);
+    res
+}
 
-    fn extract_inner_type(abga: &AngleBracketedGenericArguments) -> Option<&PathSegment> {
-        //eprintln!("extract_inner_type_of(): abga={:#?}", abga);
-        if let Some(generic_argument) = abga.args.first() {
-            //eprintln!("extract_inner_type(): first generic_argument={:?}", generic_argument);
-            match generic_argument {
-                syn::GenericArgument::Type(ty) => {
-                    //eprintln!("extract_inner_type(): first generic_argument ty={:?}", ty);
-                    match ty {
-                        syn::Type::Path(type_path) => {
-                            if let Some(path_segment) =
-                                type_path.path.segments.first()
-                            {
-                                //eprintln!("extract_inner_type(): first generic_argument path_segment={:?}", path_segment);
-                                Some(path_segment)
-                            } else {
-                                None
-                            }
+fn is_repeated_field(field: &syn::Field) -> bool {
+    //eprintln!("is_repeated_field(): ident={:?}", &field.ident);
+    let res = match &field.ty {
+        syn::Type::Path(ty_path) => {
+            let path_segments = &ty_path.path.segments;
+            //for (i, seg) in path_segments.iter().enumerate()  {
+            //    eprintln!("{} repeated_field(): seg={:?}", i, seg);
+            //}
+            if let Some(first_segment) = path_segments.first() {
+                first_segment.ident.to_string().as_str() == "Vec"
+            } else {
+                //eprintln!("is_repeated_field(): false, not path_segments");
+                false
+            }
+        }
+        _ => {
+            //eprintln!("is_repeated_field(): false, expected ty=syn::Type::Path found ty={:?}", &field.ty);
+            false
+        }
+    };
+    //eprintln!("is_repeated_field(): res={} ident={:?}", res, &field.ident);
+    res
+}
+
+fn extract_inner_type(abga: &AngleBracketedGenericArguments) -> Option<&PathSegment> {
+    //eprintln!("extract_inner_type_of(): abga={:#?}", abga);
+    if let Some(generic_argument) = abga.args.first() {
+        //eprintln!("extract_inner_type(): first generic_argument={:?}", generic_argument);
+        match generic_argument {
+            syn::GenericArgument::Type(syn::Type::Path(type_path)) => {
+                if let Some(path_segment) = type_path.path.segments.first() {
+                    //eprintln!("extract_inner_type(): first generic_argument path_segment={:?}", path_segment);
+                    Some(path_segment)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
+fn extract_inner_type_of_optional_field(field: &syn::Field) -> Option<&PathSegment> {
+    //eprintln!("extract_inner_type_of_optional_field(): field={:#?}", field);
+    match &field.ty {
+        syn::Type::Path(ty_path) => {
+            let path_segments = &ty_path.path.segments;
+            //eprintln!("extract_inner_type_of_optional_field(): len={} ty_path.path.segments={:?}", path_segments.len(), path_segments);
+            if let Some(first_segment) = path_segments.first() {
+                //eprintln!("extract_inner_type_of_optional_field(): first_segment{:?}", first_segment);
+                if first_segment.ident.to_string().as_str() == "Option" {
+                    //eprintln!("extract_inner_type_of_optional_field(): first_segment.ident is \"Option\"");
+                    match &first_segment.arguments {
+                        PathArguments::AngleBracketed(abga) => {
+                            extract_inner_type(abga)
                         }
                         _ => None,
                     }
+                } else {
+                    None
                 }
-                _ => None,
+            } else {
+                None
             }
-        } else {
-            None
         }
+        _ => None,
     }
+}
 
-    fn extract_inner_type_of_optional_field(field: &syn::Field) -> Option<&PathSegment> {
-        //eprintln!("extract_inner_type_of_optional_field(): field={:#?}", field);
-        match &field.ty {
-            syn::Type::Path(ty_path) => {
-                let path_segments = &ty_path.path.segments;
-                //eprintln!("extract_inner_type_of_optional_field(): len={} ty_path.path.segments={:?}", path_segments.len(), path_segments);
-                if let Some(first_segment) = path_segments.first() {
-                    //eprintln!("extract_inner_type_of_optional_field(): first_segment{:?}", first_segment);
-                    if first_segment.ident.to_string().as_str() == "Option" {
-                        //eprintln!("extract_inner_type_of_optional_field(): first_segment.ident is \"Option\"");
-                        match &first_segment.arguments {
-                            PathArguments::AngleBracketed(abga) => {
-                                extract_inner_type(abga)
-                            }
-                            _ => None,
+fn extract_inner_type_of_vector_field(field: &syn::Field) -> Option<&PathSegment> {
+    //eprintln!("extract_inner_type_of_vector_field(): field={:#?}", field);
+    match &field.ty {
+        syn::Type::Path(ty_path) => {
+            let path_segments = &ty_path.path.segments;
+            //eprintln!("extract_inner_type_of_vector_field(): len={} ty_path.path.segments={:?}", path_segments.len(), path_segments);
+            if let Some(first_segment) = path_segments.first() {
+                //eprintln!("extract_inner_type_of_vector_field(): first_segment{:?}", first_segment);
+                if first_segment.ident.to_string().as_str() == "Vec" {
+                    //eprintln!("extract_inner_type_of_vector_field(): first_segment.ident is \"Vec\"");
+                    match &first_segment.arguments {
+                        PathArguments::AngleBracketed(abga) => {
+                            extract_inner_type(abga)
                         }
-                    } else {
-                        None
+                        _ => None,
                     }
                 } else {
                     None
                 }
+            } else {
+                None
             }
-            _ => None,
         }
+        _ => None,
     }
+}
 
-    fn extract_inner_type_of_vector_field(field: &syn::Field) -> Option<&PathSegment> {
-        //eprintln!("extract_inner_type_of_vector_field(): field={:#?}", field);
-        match &field.ty {
-            syn::Type::Path(ty_path) => {
-                let path_segments = &ty_path.path.segments;
-                //eprintln!("extract_inner_type_of_vector_field(): len={} ty_path.path.segments={:?}", path_segments.len(), path_segments);
-                if let Some(first_segment) = path_segments.first() {
-                    //eprintln!("extract_inner_type_of_vector_field(): first_segment{:?}", first_segment);
-                    if first_segment.ident.to_string().as_str() == "Vec" {
-                        //eprintln!("extract_inner_type_of_vector_field(): first_segment.ident is \"Vec\"");
-                        match &first_segment.arguments {
-                            PathArguments::AngleBracketed(abga) => {
-                                extract_inner_type(abga)
-                            }
-                            _ => None,
-                        }
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
-    fn literal_from_builder_each_attribute(field: &syn::Field) -> Option<Literal> {
-        if field.attrs.len() == 1 {
+fn literal_from_builder_each_attribute(field: &syn::Field) -> Option<Literal> {
+    match field.attrs.len() {
+        0 => None,
+        1 => {
             let segment_count = field.attrs[0].path.segments.len();
             if segment_count == 1 {
                 match syn::parse2::<Group>(field.attrs[0].tokens.clone()) {
@@ -154,17 +134,17 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
                         for tt in group.stream().into_iter() {
                             match tt {
                                 proc_macro2::TokenTree::Group(g) => {
-                                    panic!("Not expecting group `{}` in attribute(builder, each = \"xxx\")", g.to_string());
+                                    abort!(g, "Not expecting group `{}` in attribute(builder, each = \"xxx\")", g.to_string());
                                 }
                                 proc_macro2::TokenTree::Ident(id) => {
-                                    if id.to_string() != "each" {
-                                        panic!("Expecting `each` found `{}` identifer in attribute(builder, each = \"xxx\")", id.to_string());
+                                    if id != "each" {
+                                        abort!(id, "expected `builder(each = \"...\")`");
                                     }
                                     ident = Some(id);
                                 }
                                 proc_macro2::TokenTree::Punct(p) => {
                                     if p.as_char() != '=' {
-                                        panic!("Expecting '=' after {} = found '{}' ", ident.unwrap().to_string(), p.as_char());
+                                        abort!(p, "Expecting '=' after {} = found '{}' ", ident.unwrap().to_string(), p.as_char());
                                     }
                                 }
                                 proc_macro2::TokenTree::Literal(l) => {
@@ -173,21 +153,27 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
                             };
                         }
                         if literal.is_none() {
-                            panic!("Expecting a literal, such as `xxx` in attribute(builder, each = \"xxx\"");
+                            abort!(group, "Expecting a literal, such as `xxx` in attribute(builder, each = \"xxx\"");
                         }
                         //eprintln!("literal_from_builder_each_attribute: literal={:?}", literal);
-                        return literal;
+                        literal
                     }
-                    Err(e) => panic!("Group Err: {}", e),
+                    Err(e) => abort_call_site!("Group Err: {}", e),
                 }
             } else {
-                panic!("Expecting one attribute(builder, each = \"xxx\"), there are {} `builder` attributes", segment_count);
+                abort_call_site!("Expecting one attribute(builder, each = \"xxx\"), there are {} `builder` attributes", segment_count);
             }
-        } else {
-            //eprintln!("No builder each attribute");
-            return None; //panic!("Only one attribute(builder, each = \"xxx\") there are {}", field.attrs.len());
+        }
+        _ => {
+            abort_call_site!("Only one attribute(builder, each = \"xxx\") there are {}", field.attrs.len());
         }
     }
+}
+
+// A testable function that generates a TokenStream
+pub fn generate(struct_model: &StructModel) -> TokenStream {
+    let struct_ident = &struct_model.struct_ident;
+    let builder_ident = &struct_model.builder_ident;
 
     let optional_named_fields = struct_model.named_fields.iter().map(|field| {
         let ident = &field.ident;
@@ -258,7 +244,7 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
                         self
                     }
                 };
-                if each_ident.clone() != ident.clone() {
+                if each_ident != ident {
                     //eprintln!( "add_setters: repeated_field HAS builder_each_attr each_ident={:?} != ident={:?} HAS both all & one_at_a_time ty={:?}", each_ident, ident, ty);
                     quote! {
                         #all_at_a_time
@@ -298,8 +284,8 @@ pub fn generate(struct_model: &StructModel) -> TokenStream {
         } else {
             let error_string = format!(
                 "{} field: `{}` not set",
-                struct_ident.to_string(),
-                ident.clone().unwrap().to_string()
+                struct_ident,
+                ident.clone().unwrap()
             );
 
             quote! {

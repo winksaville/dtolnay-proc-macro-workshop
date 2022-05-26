@@ -51,7 +51,7 @@ mod tests {
             }
         );
 
-        let item_struct = parse(input);
+        let item_struct = parse(input).unwrap();
         let model = analyze(item_struct);
         assert_eq!(&model.struct_ident, &model.ast.ident);
         let mut iter = model.named_fields.iter();
